@@ -29,7 +29,7 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: httpbingo
+                            cluster: httpbin-test
                 http_filters:
                   - name: envoy.filters.http.wasm
                     typed_config:
@@ -42,22 +42,28 @@ static_resources:
                             runtime: "envoy.wasm.runtime.v8"
                             code:
                               local:
-                                filename: "./target/wasm32-wasi/release/proxy-wasm-http-call.wasm"
+                                filename: "./target/wasm32-wasi/release/proxy_wasm_http_call.wasm"
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-    - name: httpbingo
+    - name: httpbin-test
       connect_timeout: 10s
       type: LOGICAL_DNS
+      dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: mock_service
+        cluster_name: httpbin-test
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
                     socket_address:
-                      address: httpbingo.org
-                      port_value: 80
+                      address: httpbin.org
+                      port_value: 443
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          sni: "httpbin.org"

@@ -13,25 +13,44 @@ proxy_wasm::main! {{
 struct HttpCall;
 impl HttpContext for HttpCall {
     fn on_http_request_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
-        let req = self.dispatch_http_call(
-            "httpbingo",
+        match self.dispatch_http_call(
+            "httpbin-test",
             vec![
                 (":method", "GET"),
                 (":path", "/uuid"),
-                (":authority", "httpbingo.org"),
-                ("scheme", "https"),
+                (":authority", "httpbin.org"),
+                ("Content-Type", "application/x-www-form-urlencoded"),
             ],
             None,
             vec![],
-            time::Duration::from_secs(5),
-        );
-        match req {
+            time::Duration::from_secs(10),
+        ) {
             Ok(o) => info!("get ok, uuid = {}", o),
-            Err(e) => info!("get err {:?}", e),
+            Err(e) => info!("get err, {:?}", e),
         }
 
-        Action::Continue
+        Action::Pause
     }
 }
 
-impl Context for HttpCall {}
+impl Context for HttpCall {
+    fn on_http_call_response(
+        &mut self,
+        _token_id: u32,
+        _num_headers: usize,
+        _body_size: usize,
+        _num_trailers: usize,
+    ) {
+        let body = self.get_http_call_response_body(0, _body_size);
+        match body {
+            Some(b) => info!(
+                "token_id {} call response body = {}",
+                _token_id,
+                String::from_utf8(b).unwrap()
+            ),
+            _ => info!("token_id {} call response none", _token_id),
+        }
+
+        self.resume_http_request();
+    }
+}
