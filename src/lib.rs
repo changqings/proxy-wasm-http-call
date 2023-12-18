@@ -36,19 +36,19 @@ impl HttpContext for HttpCall {
 impl Context for HttpCall {
     fn on_http_call_response(
         &mut self,
-        _token_id: u32,
+        token_id: u32,
         _num_headers: usize,
-        _body_size: usize,
+        body_size: usize,
         _num_trailers: usize,
     ) {
-        let body = self.get_http_call_response_body(0, _body_size);
+        let body = self.get_http_call_response_body(0, body_size);
         match body {
             Some(b) => info!(
                 "token_id {} call response body = {}",
-                _token_id,
+                token_id,
                 String::from_utf8(b).unwrap()
             ),
-            _ => info!("token_id {} call response none", _token_id),
+            _ => info!("token_id {} call response none", token_id),
         }
 
         self.resume_http_request();
