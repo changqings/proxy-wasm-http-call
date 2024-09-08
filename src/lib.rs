@@ -1,32 +1,117 @@
 use std::time;
+use std::time::Duration;
 use std::vec;
 
 use log::info;
+use prost::Message;
 use proxy_wasm::traits::*;
 use proxy_wasm::types::*;
 
 proxy_wasm::main! {{
     proxy_wasm::set_log_level(LogLevel::Debug);
-    proxy_wasm::set_http_context(|_,_| -> Box<dyn HttpContext> { Box::new(HttpCall)});
+    // only one of set_http_context or set_grpc_context can be called
+    // proxy_wasm::set_http_context(|_,_| -> Box<dyn HttpContext> { Box::new(HttpCall)});
+    proxy_wasm::set_http_context(|_,_| -> Box<dyn HttpContext> { Box::new(GrpcCall)});
 }}
+// #[derive(Clone, PartialEq, ::prost::Message)]
+// pub struct HelloRequest {
+//     #[prost(string, tag = "1")]
+//     pub name: ::prost::alloc::string::String,
+//     #[prost(string, tag = "2")]
+//     pub message: ::prost::alloc::string::String,
+// }
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HelloRequest {
+    #[prost(string, tag = "1")]
+    pub name: String,
+    #[prost(string, tag = "2")]
+    pub message: String,
+}
+
+struct GrpcCall;
+impl HttpContext for GrpcCall {
+    fn on_http_request_headers(&mut self, _: usize, _: bool) -> Action {
+        let msg = HelloRequest {
+            name: "wasm".to_string(),
+            message: "hello".to_string(),
+        };
+        match self.get_http_request_header(":path") {
+            Some(route) if route.starts_with("/go") => {
+                let res = self.dispatch_grpc_call(
+                    "grpc_go_cluster",
+                    "HelloService",
+                    "SayHello",
+                    vec![],
+                    Some(msg.encode_to_vec().as_slice()),
+                    Duration::from_secs(2),
+                );
+                match res {
+                    Ok(o) => info!("go_get response: {:?}", o),
+                    Err(e) => info!("go_got error: {:?}", e),
+                }
+            }
+            _ => {
+                let res = self.dispatch_grpc_call(
+                    "grpc_rs_cluster",
+                    "hello.HelloService",
+                    "SayHello",
+                    vec![],
+                    Some(msg.encode_to_vec().as_slice()),
+                    Duration::from_secs(2),
+                );
+                match res {
+                    Ok(o) => info!("rs_got response: {:?}", o),
+                    Err(e) => info!("rs_got error: {:?}", e),
+                }
+            }
+        }
+
+        Action::Pause
+    }
+}
+
+impl Context for GrpcCall {
+    fn on_grpc_call_response(&mut self, _token_id: u32, status_code: u32, _response_size: usize) {
+        if status_code % 2 == 0 {
+            info!("got status_code: {:?}, ", status_code);
+            self.resume_http_request();
+        } else {
+            info!("got error code: {:?}", status_code);
+            self.send_grpc_response(
+                GrpcStatusCode::Aborted,
+                Some("Aborted by Proxy-Wasm!"),
+                vec![("Power-by", b"proxy-wasm")],
+            );
+        }
+    }
+}
 
 struct HttpCall;
 impl HttpContext for HttpCall {
     fn on_http_request_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
-        match self.dispatch_http_call(
-            "httpbin-test",
-            vec![
-                (":method", "GET"),
-                (":path", "/uuid"),
-                (":authority", "httpbin.org"),
-                ("Content-Type", "application/x-www-form-urlencoded"),
-            ],
-            None,
-            vec![],
-            time::Duration::from_secs(10),
-        ) {
-            Ok(o) => info!("get ok, uuid = {}", o),
-            Err(e) => info!("get err, {:?}", e),
+        match self.get_http_request_header(":path") {
+            Some(path) if path == "/uuid" => {
+                match self.dispatch_http_call(
+                    "httpbin-test",
+                    vec![
+                        (":method", "GET"),
+                        (":path", "/uuid"),
+                        (":authority", "httpbin.org"),
+                        ("Content-Type", "application/x-www-form-urlencoded"),
+                    ],
+                    None,
+                    vec![],
+                    time::Duration::from_secs(10),
+                ) {
+                    Ok(o) => info!("get ok, uuid = {}", o),
+                    Err(e) => info!("get err, {:?}", e),
+                }
+            }
+            _ => {
+                info!("not request /uuid, past");
+                return Action::Continue;
+            }
         }
 
         Action::Pause

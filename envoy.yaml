@@ -29,7 +29,11 @@ static_resources:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: httpbin-test
+                            cluster: grpc_rs_cluster
+                        - match:
+                            prefix: "/go"
+                          route:
+                            cluster: grpc_rs_cluster
                 http_filters:
                   - name: envoy.filters.http.wasm
                     typed_config:
@@ -48,6 +52,34 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
+    - name: grpc_rs_cluster
+      connect_timeout: 10s
+      type: LOGICAL_DNS
+      lb_policy: ROUND_ROBIN
+      http2_protocol_options: {}
+      load_assignment:
+        cluster_name: grpc_rs_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: "127.0.0.1"
+                      port_value: 8081
+    - name: grpc_go_cluster
+      connect_timeout: 10s
+      type: LOGICAL_DNS
+      lb_policy: ROUND_ROBIN
+      http2_protocol_options: {}
+      load_assignment:
+        cluster_name: grpc_go_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: "192.168.1.10"
+                      port_value: 8080
     - name: httpbin-test
       connect_timeout: 10s
       type: LOGICAL_DNS
