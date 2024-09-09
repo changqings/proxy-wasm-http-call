@@ -27,13 +27,17 @@ static_resources:
                         - "*"
                       routes:
                         - match:
-                            prefix: "/"
-                          route:
-                            cluster: grpc_rs_cluster
-                        - match:
                             prefix: "/go"
                           route:
                             cluster: grpc_go_cluster
+                        - match:
+                            prefix: "/uuid"
+                          route:
+                            cluster: https_httpbin_org
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: grpc_rs_cluster
                 http_filters:
                   - name: envoy.filters.http.wasm
                     typed_config:
@@ -41,7 +45,7 @@ static_resources:
                       type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
                       value:
                         config:
-                          name: "http_call_httpbin"
+                          name: "http_call_wasm"
                           vm_config:
                             runtime: "envoy.wasm.runtime.v8"
                             code:
@@ -80,7 +84,7 @@ static_resources:
                     socket_address:
                       address: "127.0.0.1"
                       port_value: 8080
-    - name: httpbin-test
+    - name: https_httpbin_org
       connect_timeout: 10s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY
