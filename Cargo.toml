@@ -6,7 +6,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-log = { version = "0.4.20", features = ["std"] }
+log = { version = "0.4.27", features = ["std"] }
 prost = "0.13.2"
 proxy-wasm = "0.2.2"
 serde = { version = "1.0.210", features = ["derive"] }

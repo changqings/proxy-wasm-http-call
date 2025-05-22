@@ -35,10 +35,13 @@ static_resources:
                           route:
                             cluster: https_httpbin_org
                         - match:
+                            prefix: "/headers"
+                          route:
+                            cluster: https_httpbin_org
+                        - match:
                             prefix: "/"
                           route:
-<<<<<<< HEAD
-                            cluster: httpbin
+                            cluster: grpc_rs_cluster
                 http_filters:
                   - name: envoy.filters.http.wasm
                     typed_config:
@@ -54,30 +57,11 @@ static_resources:
                           code:
                             local:
                               filename: "./target/wasm32-wasip1/release/proxy_wasm_http_call.wasm"
-=======
-                            cluster: grpc_rs_cluster
-                http_filters:
-                  - name: envoy.filters.http.wasm
-                    typed_config:
-                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
-                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
-                      value:
-                        config:
-                          name: "http_call_wasm"
-                          vm_config:
-                            runtime: "envoy.wasm.runtime.v8"
-                            code:
-                              local:
-                                filename: "./target/wasm32-wasi/release/proxy_wasm_http_call.wasm"
->>>>>>> ee3277ba037afdaaae308b82405d5244b4c11998
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-<<<<<<< HEAD
-    - name: httpbin
-=======
     - name: grpc_rs_cluster
       connect_timeout: 10s
       type: LOGICAL_DNS
@@ -107,7 +91,6 @@ static_resources:
                       address: "127.0.0.1"
                       port_value: 8080
     - name: https_httpbin_org
->>>>>>> ee3277ba037afdaaae308b82405d5244b4c11998
       connect_timeout: 10s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY

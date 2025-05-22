@@ -52,13 +52,30 @@ impl HttpContext for HttpCall {
                     Err(e) => info!("go_got error: {:?}", e),
                 }
             }
-
             Some(path) if path == "/uuid" => {
                 match self.dispatch_http_call(
                     "https_httpbin_org",
                     vec![
                         (":method", "GET"),
                         (":path", "/uuid"),
+                        (":authority", "httpbin.org"),
+                        ("Content-Type", "application/x-www-form-urlencoded"),
+                    ],
+                    None,
+                    vec![],
+                    time::Duration::from_secs(10),
+                ) {
+                    Ok(o) => info!("get ok, uuid = {}", o),
+                    Err(e) => info!("get err, {:?}", e),
+                }
+            }
+            Some(path) if path == "/headers" => {
+                self.add_http_request_header("tv", "tcl");
+                match self.dispatch_http_call(
+                    "https_httpbin_org",
+                    vec![
+                        (":method", "GET"),
+                        (":path", "/headers"),
                         (":authority", "httpbin.org"),
                         ("Content-Type", "application/x-www-form-urlencoded"),
                     ],
@@ -88,6 +105,14 @@ impl HttpContext for HttpCall {
         }
 
         Action::Pause
+    }
+
+    fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        let proxy_wasm_header_key = "proxy-wasm";
+        // let proxy_wasm_header_value = self.get_http_request_header(proxy_wasm_header_key);
+        let proxy_wasm_header_value = "hello";
+        self.set_http_response_header(proxy_wasm_header_key, Some(proxy_wasm_header_value));
+        Action::Continue
     }
 }
 
@@ -123,5 +148,15 @@ impl Context for HttpCall {
                 vec![("Power-by", b"proxy-wasm")],
             );
         }
+    }
+}
+
+impl RootContext for HttpCall {
+    fn get_type(&self) -> Option<ContextType> {
+        Some(ContextType::HttpContext)
+    }
+
+    fn create_http_context(&self, _: u32) -> Option<Box<dyn HttpContext>> {
+        Some(Box::new(HttpCall))
     }
 }
