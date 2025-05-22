@@ -3,12 +3,12 @@
 
 build:
 	cargo build \
-	--target wasm32-wasi \
+	--target wasm32-wasip1 \
 	--release
 
 clean:
 	cargo clean
 run:
-	sudo envoy -c ./envoy.yaml \
+	envoy -c ./envoy.yaml \
 	--concurrency 2 \
 	--log-format '%v'

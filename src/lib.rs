@@ -23,7 +23,7 @@ impl HttpContext for HttpCall {
             ],
             None,
             vec![],
-            time::Duration::from_secs(10),
+            time::Duration::from_secs(5),
         ) {
             Ok(o) => info!("get ok, uuid = {}", o),
             Err(e) => info!("get err, {:?}", e),
